@@ -51,7 +51,6 @@ export default async function handler(req, res) {
     if (!eligibleDoctors || eligibleDoctors.length === 0) {
       return res.status(200).json({ message: "No eligible payouts this month", processed: 0 });
     }
-
     console.log(`Found ${eligibleDoctors.length} doctors with eligible payouts`);
 
     const results = { success: [], failed: [], skipped: [] };
@@ -130,7 +129,9 @@ export default async function handler(req, res) {
         console.log(`Payout result for ${doc.doctor_name}:`, JSON.stringify(payoutResult));
 
         if (payoutRes.ok && payoutResult.status === "RECEIVED") {
-          // Link referrals to this payout (already fetched above)
+          const cfTransferId = payoutResult.cf_transfer_id;
+
+          // Link referrals to this payout
           if (referrals && referrals.length > 0) {
             await supabase
               .from("referrals")
@@ -139,11 +140,46 @@ export default async function handler(req, res) {
           }
 
           await supabase.from("payout_log")
-            .update({ status: "processing", paid_on: periodEnd })
+            .update({ 
+              status: "processing", 
+              paid_on: periodEnd,
+              cf_transfer_id: cfTransferId,
+            })
             .eq("id", payoutLog.id);
 
-          results.success.push({ doctor: doc.doctor_name, amount, transfer_id: transferId });
-          console.log(`✓ Payout initiated for ${doc.doctor_name} — ₹${amount}`);
+          // Poll for transfer status after 15 seconds
+          await sleep(15000);
+          try {
+            const statusRes = await fetch(
+              `${CASHFREE_API_URL}/transfer-status/${transferId}?cf_transfer_id=${cfTransferId}`, 
+              { headers: { "x-admin-secret": process.env.ADMIN_SECRET } }
+            );
+            const statusData = await statusRes.json();
+            console.log(`Transfer status for ${doc.doctor_name}:`, JSON.stringify(statusData));
+
+            const transferStatus = statusData.status || statusData.transfer_status;
+
+            if (transferStatus === "SUCCESS") {
+              await supabase.from("payout_log")
+                .update({ status: "paid" })
+                .eq("id", payoutLog.id);
+              results.success.push({ doctor: doc.doctor_name, amount, transfer_id: transferId, status: "paid" });
+              console.log(`✓ Payout confirmed for ${doc.doctor_name} — ₹${amount}`);
+            } else if (transferStatus === "FAILED" || transferStatus === "REJECTED" || transferStatus === "REVERSED") {
+              await supabase.from("payout_log")
+                .update({ status: "failed", failure_reason: transferStatus })
+                .eq("id", payoutLog.id);
+              await supabase.from("referrals")
+                .update({ doctor_payout_id: null })
+                .in("id", referrals.map(r => r.id));
+              results.failed.push({ doctor: doc.doctor_name, amount, error: transferStatus });
+            } else {
+              results.success.push({ doctor: doc.doctor_name, amount, transfer_id: transferId, status: transferStatus });
+            }
+          } catch (pollErr) {
+            console.error(`Status poll failed for ${doc.doctor_name}:`, pollErr.message);
+            results.success.push({ doctor: doc.doctor_name, amount, transfer_id: transferId, status: "processing" });
+          }
 
         } else {
           await supabase.from("payout_log")

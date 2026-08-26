@@ -55,8 +55,13 @@
     <div id="regResult"></div>
   </div>
 
-  <!-- Run Payouts -->
+  <!-- Check Payout Status -->
   <div class="card">
+    <h2>🔍 Check Processing Payout Status</h2>
+    <p style="font-size:13px;color:#666;margin:0 0 16px">Checks all processing payouts with Cashfree and updates status. Runs automatically at 11:30pm IST daily.</p>
+    <button class="btn-blue" onclick="checkPayoutStatus()" id="checkBtn">Check Now</button>
+    <div id="checkResult"></div>
+  </div>
     <h2>💸 Run Monthly Payouts</h2>
     <p style="font-size:13px;color:#666;margin:0 0 16px">Manually trigger monthly payouts for all eligible doctors. Runs automatically on the 1st of each month.</p>
     <button class="btn-green" onclick="runPayouts()" id="payoutBtn">Run Payouts Now</button>
@@ -146,7 +151,34 @@
       running = false; btn.disabled = false;
     }
 
-    async function runPayouts() {
+    async function checkPayoutStatus() {
+      if (running) return;
+      const secret = document.getElementById('secret').value.trim();
+      const btn = document.getElementById('checkBtn');
+      const result = document.getElementById('checkResult');
+      if (!secret) { result.className = 'result error'; result.textContent = 'Enter Admin Secret'; return; }
+
+      running = true; btn.disabled = true;
+      result.className = 'result info';
+      result.textContent = '⏳ Checking processing payouts...';
+
+      try {
+        const res = await fetch('/api/check-payout-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        });
+        const data = await res.json();
+        if (!res.ok) { result.className = 'result error'; result.textContent = `✗ Error:\n${JSON.stringify(data, null, 2)}`; }
+        else {
+          result.className = 'result success';
+          result.textContent = `✅ Status check complete!\n\n✓ Paid: ${data.paid}\n✗ Failed: ${data.failed}\n⏳ Still processing: ${data.still_processing}`;
+        }
+      } catch (err) {
+        result.className = 'result error';
+        result.textContent = `✗ Error: ${err.message}`;
+      }
+      running = false; btn.disabled = false;
+    }
       if (running) return;
       const secret = document.getElementById('secret').value.trim();
       const btn = document.getElementById('payoutBtn');

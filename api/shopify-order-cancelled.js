@@ -49,12 +49,13 @@ export default async function handler(req, res) {
   const shopifyOrderId = String(order.id);
 
   // Find the matching referral and mark it cancelled.
-  // Only updates if it hasn't already been paid out — safety check.
+  // Only updates if NEITHER doctor nor MR has already been paid out — safety check.
   const { data, error } = await supabase
     .from("referrals")
     .update({ status: "cancelled" })
     .eq("shopify_order_id", shopifyOrderId)
-    .is("payout_id", null)
+    .is("doctor_payout_id", null)
+    .is("mr_payout_id", null)
     .select();
 
   if (error) {

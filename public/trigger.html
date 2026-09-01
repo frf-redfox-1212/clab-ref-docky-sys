@@ -179,9 +179,9 @@
       }
       running = false; btn.disabled = false;
     }
+
+    async function runPayouts() {
       if (running) return;
-      const secret = document.getElementById('secret').value.trim();
-      const btn = document.getElementById('payoutBtn');
       const result = document.getElementById('payoutResult');
       if (!secret) { result.className = 'result error'; result.textContent = 'Enter Admin Secret'; return; }
 

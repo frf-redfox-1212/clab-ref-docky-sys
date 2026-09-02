@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/run-monthly-payouts",
+      "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/check-payout-status",
+      "schedule": "30 18 * * *"
+    }
+  ]
+}

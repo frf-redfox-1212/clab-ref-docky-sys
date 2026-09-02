@@ -1,0 +1,9 @@
+{
+  "name": "doctor-referral-webhook",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@cashfreepayments/cashfree-sdk": "^0.1.7",
+    "@supabase/supabase-js": "^2.0.0"
+  }
+}

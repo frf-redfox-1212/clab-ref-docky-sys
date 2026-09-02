@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KLAB Referral Admin</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 60px auto; padding: 20px; background: #f5f5f5; }
+    h1 { color: #1a1a1a; font-size: 22px; }
+    .card { background: white; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    h2 { font-size: 16px; margin: 0 0 16px; }
+    label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 14px; }
+    input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; margin-bottom: 16px; }
+    button { color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 15px; cursor: pointer; width: 100%; margin-bottom: 8px; }
+    .btn-blue { background: #2563eb; }
+    .btn-blue:hover { background: #1d4ed8; }
+    .btn-green { background: #16a34a; }
+    .btn-green:hover { background: #15803d; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .result { margin-top: 16px; padding: 12px; border-radius: 6px; font-size: 13px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+    .success { background: #dcfce7; color: #166534; }
+    .error { background: #fee2e2; color: #991b1b; }
+    .info { background: #dbeafe; color: #1e40af; }
+    .progress { background: #f3f4f6; border-radius: 6px; height: 12px; margin: 12px 0; overflow: hidden; }
+    .progress-bar { height: 100%; transition: width 0.3s; }
+    .blue { background: #2563eb; }
+    .green { background: #16a34a; }
+  </style>
+</head>
+<body>
+  <h1>KLAB Nutra — Referral Admin</h1>
+
+  <div class="card">
+    <label>Admin Secret</label>
+    <input id="secret" type="password" placeholder="Your ADMIN_SECRET" />
+  </div>
+
+  <!-- Sync new codes -->
+  <div class="card">
+    <h2>🔄 Sync New Codes to Shopify</h2>
+    <label>Codes per batch</label>
+    <input id="batchSize" type="number" value="500" />
+    <button class="btn-blue" onclick="startSync()" id="syncBtn">Start Sync</button>
+    <div class="progress" id="syncProgress" style="display:none">
+      <div class="progress-bar blue" id="syncFill" style="width:0%"></div>
+    </div>
+    <div id="syncResult"></div>
+  </div>
+
+  <!-- Register Beneficiaries -->
+  <div class="card">
+    <h2>🏦 Register Doctor Bank Details with Cashfree</h2>
+    <p style="font-size:13px;color:#666;margin:0 0 16px">Registers all doctors who have bank details but aren't yet registered with Cashfree.</p>
+    <button class="btn-blue" onclick="registerBeneficiaries()" id="regBtn">Register All Unregistered Doctors</button>
+    <div id="regResult"></div>
+  </div>
+
+  <!-- Check Payout Status -->
+  <div class="card">
+    <h2>🔍 Check Processing Payout Status</h2>
+    <p style="font-size:13px;color:#666;margin:0 0 16px">Checks all processing payouts with Cashfree and updates status. Runs automatically at 11:30pm IST daily.</p>
+    <button class="btn-blue" onclick="checkPayoutStatus()" id="checkBtn">Check Now</button>
+    <div id="checkResult"></div>
+  </div>
+    <h2>💸 Run Monthly Payouts</h2>
+    <p style="font-size:13px;color:#666;margin:0 0 16px">Manually trigger monthly payouts for all eligible doctors. Runs automatically on the 1st of each month.</p>
+    <button class="btn-green" onclick="runPayouts()" id="payoutBtn">Run Payouts Now</button>
+    <div id="payoutResult"></div>
+  </div>
+    <h2>✅ Verify & Update Sync Status</h2>
+    <p style="font-size:13px;color:#666;margin:0 0 16px">Checks Shopify for all existing codes and updates shopify_synced in Supabase. Run this after overnight sync.</p>
+    <button class="btn-green" onclick="verifySync()" id="verifyBtn">Verify Sync Status</button>
+    <div id="verifyResult"></div>
+  </div>
+
+  <script>
+    let running = false;
+
+    async function startSync() {
+      if (running) return;
+      const secret = document.getElementById('secret').value.trim();
+      const batchSize = parseInt(document.getElementById('batchSize').value) || 500;
+      const btn = document.getElementById('syncBtn');
+      const result = document.getElementById('syncResult');
+      const progress = document.getElementById('syncProgress');
+      const fill = document.getElementById('syncFill');
+      if (!secret) { result.className = 'result error'; result.textContent = 'Enter Admin Secret'; return; }
+
+      running = true; btn.disabled = true; progress.style.display = 'block';
+      let totalSynced = 0, totalFailed = 0, initialRemaining = null;
+
+      while (true) {
+        result.className = 'result info';
+        result.textContent = `⏳ Syncing...\nSynced: ${totalSynced} | Failed: ${totalFailed}`;
+        try {
+          const res = await fetch('/api/sync-discount-codes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+            body: JSON.stringify({ limit: batchSize })
+          });
+          const data = await res.json();
+          if (!res.ok) { result.className = 'result error'; result.textContent = `✗ Error:\n${JSON.stringify(data, null, 2)}`; break; }
+          totalSynced += data.synced;
+          totalFailed += data.failed;
+          if (initialRemaining === null) initialRemaining = data.remaining + data.synced;
+          const pct = initialRemaining > 0 ? Math.min(Math.round((totalSynced / initialRemaining) * 100), 100) : 100;
+          fill.style.width = `${pct}%`;
+          if (data.done) {
+            result.className = 'result success';
+            result.textContent = `✅ All codes synced!\nSynced: ${totalSynced} | Failed: ${totalFailed}`;
+            fill.style.width = '100%';
+            break;
+          }
+          await new Promise(r => setTimeout(r, 500));
+        } catch (err) {
+          result.className = 'result error';
+          result.textContent = `✗ Error: ${err.message}\nSynced so far: ${totalSynced}`;
+          break;
+        }
+      }
+      running = false; btn.disabled = false;
+    }
+
+    async function registerBeneficiaries() {
+      if (running) return;
+      const secret = document.getElementById('secret').value.trim();
+      const btn = document.getElementById('regBtn');
+      const result = document.getElementById('regResult');
+      if (!secret) { result.className = 'result error'; result.textContent = 'Enter Admin Secret'; return; }
+
+      running = true; btn.disabled = true;
+      result.className = 'result info';
+      result.textContent = '⏳ Fetching unregistered doctors...';
+
+      try {
+        // Get all doctors with bank details not yet registered
+        const res = await fetch('/api/register-all-beneficiaries', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        });
+        const data = await res.json();
+        if (!res.ok) { result.className = 'result error'; result.textContent = `✗ Error:\n${JSON.stringify(data, null, 2)}`; }
+        else {
+          result.className = 'result success';
+          result.textContent = `✅ Registration complete!\n\nRegistered: ${data.registered}\nAlready registered: ${data.already_registered}\nFailed: ${data.failed}\n\n${data.failed_details?.length ? 'Failed:\n' + data.failed_details.map(f => f.doctor + ': ' + f.error).join('\n') : ''}`;
+        }
+      } catch (err) {
+        result.className = 'result error';
+        result.textContent = `✗ Error: ${err.message}`;
+      }
+      running = false; btn.disabled = false;
+    }
+
+    async function checkPayoutStatus() {
+      if (running) return;
+      const secret = document.getElementById('secret').value.trim();
+      const btn = document.getElementById('checkBtn');
+      const result = document.getElementById('checkResult');
+      if (!secret) { result.className = 'result error'; result.textContent = 'Enter Admin Secret'; return; }
+
+      running = true; btn.disabled = true;
+      result.className = 'result info';
+      result.textContent = '⏳ Checking processing payouts...';
+
+      try {
+        const res = await fetch('/api/check-payout-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        });
+        const data = await res.json();
+        if (!res.ok) { result.className = 'result error'; result.textContent = `✗ Error:\n${JSON.stringify(data, null, 2)}`; }
+        else {
+          result.className = 'result success';
+          result.textContent = `✅ Status check complete!\n\n✓ Paid: ${data.paid}\n✗ Failed: ${data.failed}\n⏳ Still processing: ${data.still_processing}`;
+        }
+      } catch (err) {
+        result.className = 'result error';
+        result.textContent = `✗ Error: ${err.message}`;
+      }
+      running = false; btn.disabled = false;
+    }
+
+    async function runPayouts() {
+      if (running) return;
+      const result = document.getElementById('payoutResult');
+      if (!secret) { result.className = 'result error'; result.textContent = 'Enter Admin Secret'; return; }
+
+      if (!confirm('Are you sure you want to run payouts now? This will initiate real bank transfers.')) return;
+
+      running = true; btn.disabled = true;
+      result.className = 'result info';
+      result.textContent = '⏳ Processing payouts...';
+
+      try {
+        const res = await fetch('/api/run-monthly-payouts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        });
+        const data = await res.json();
+        if (!res.ok) { result.className = 'result error'; result.textContent = `✗ Error:\n${JSON.stringify(data, null, 2)}`; }
+        else {
+          result.className = 'result success';
+          result.textContent = `✅ Payout run complete!\n\nSuccessful: ${data.success}\nFailed: ${data.failed}\nSkipped (no bank details): ${data.skipped}\n\n${data.details?.failed?.length ? 'Failed:\n' + data.details.failed.map(f => f.doctor + ': ' + f.error).join('\n') : ''}`;
+        }
+      } catch (err) {
+        result.className = 'result error';
+        result.textContent = `✗ Error: ${err.message}`;
+      }
+      running = false; btn.disabled = false;
+    }
+
+    async function verifySync() {
+      if (running) return;
+      const secret = document.getElementById('secret').value.trim();
+      const btn = document.getElementById('verifyBtn');
+      const result = document.getElementById('verifyResult');
+      if (!secret) { result.className = 'result error'; result.textContent = 'Enter Admin Secret'; return; }
+
+      running = true; btn.disabled = true;
+      let offset = 0, totalSynced = 0, totalUnsynced = 0;
+
+      while (true) {
+        result.className = 'result info';
+        result.textContent = `⏳ Verifying... processed ${offset} codes\nSynced: ${totalSynced} | Not in Shopify: ${totalUnsynced}`;
+        try {
+          const res = await fetch('/api/verify-shopify-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+            body: JSON.stringify({ offset })
+          });
+          const data = await res.json();
+          if (!res.ok) { result.className = 'result error'; result.textContent = `✗ Error:\n${JSON.stringify(data, null, 2)}`; break; }
+
+          totalSynced += data.synced_this_batch;
+          totalUnsynced += data.unsynced_this_batch;
+          offset = data.next_offset;
+
+          if (data.done) {
+            result.className = 'result success';
+            result.textContent = `✅ Verification complete!\n\nCodes in Shopify: ${data.shopify_total}\nTotal processed: ${data.total}\nMarked synced: ${totalSynced}\nNot in Shopify: ${totalUnsynced}`;
+            break;
+          }
+          await new Promise(r => setTimeout(r, 300));
+        } catch (err) {
+          result.className = 'result error';
+          result.textContent = `✗ Error: ${err.message}\nProcessed so far: ${offset}`;
+          break;
+        }
+      }
+      running = false; btn.disabled = false;
+    }
+  </script>
+</body>
+</html>

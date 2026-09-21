@@ -62,7 +62,7 @@ export default async function handler(req, res) {
       // Check if doctor has registered bank details
       const { data: bank } = await supabase
         .from("doctor_bank_details")
-        .select("cashfree_beneficiary_id, cashfree_registered")
+        .select("cashfree_beneficiary_id, cashfree_registered, cashfree_verified")
         .eq("doctor_id", doc.doctor_id)
         .single();
 
@@ -72,18 +72,40 @@ export default async function handler(req, res) {
         continue;
       }
 
+      if (bank.cashfree_verified === false) {
+        results.skipped.push({ doctor: doc.doctor_name, reason: "Bank details unverified — please update" });
+        console.log(`Skipped ${doc.doctor_name} — bank details unverified`);
+        continue;
+      }
+
       const amount = parseFloat(doc.doctor_total_owed);
       const transferId = `KLAB_${doc.doctor_id.replace(/-/g, '').substring(0, 12).toUpperCase()}_${Date.now()}`;
 
       try {
+        // Check if payout already exists for this doctor this month
+        const { data: existingPayout } = await supabase
+          .from("payout_log")
+          .select("id, status")
+          .eq("doctor_id", doc.doctor_id)
+          .eq("recipient_type", "doctor")
+          .gte("created_at", new Date(now.getFullYear(), now.getMonth(), 1).toISOString())
+          .in("status", ["processing", "paid"])
+          .single();
+
+        if (existingPayout) {
+          results.skipped.push({ doctor: doc.doctor_name, reason: `Already has a ${existingPayout.status} payout this month` });
+          console.log(`Skipped ${doc.doctor_name} — already has ${existingPayout.status} payout this month`);
+          continue;
+        }
+
         // Get referral details for payout log
         const { data: referrals } = await supabase
           .from("referrals")
           .select("id, shopify_order_number, discount_code")
           .eq("doctor_id", doc.doctor_id)
-          .eq("status", "delivered")
           .is("doctor_payout_id", null)
-          .lte("eligible_at", now.toISOString());
+          .lte("eligible_at", now.toISOString())
+          .neq("status", "cancelled");
 
         const orderNumbers = referrals?.map(r => r.shopify_order_number).join(", ") || "";
         const discountCodes = [...new Set(referrals?.map(r => r.discount_code).filter(Boolean))].join(", ") || "";

@@ -75,6 +75,11 @@ export default async function handler(req, res) {
             .update({ doctor_payout_id: null })
             .eq("doctor_id", payout.doctor_id);
 
+          // Mark bank details as unverified so system skips next time
+          await supabase.from("doctor_bank_details")
+            .update({ cashfree_verified: false })
+            .eq("doctor_id", payout.doctor_id);
+
           results.failed.push({ name: payout.recipient_name, amount: payout.total_payout, reason: transferStatus });
 
         } else {

@@ -82,19 +82,18 @@ export default async function handler(req, res) {
       const transferId = `KLAB_${doc.doctor_id.replace(/-/g, '').substring(0, 12).toUpperCase()}_${Date.now()}`;
 
       try {
-        // Check if payout already exists for this doctor this month
-        const { data: existingPayout } = await supabase
-          .from("payout_log")
-          .select("id, status")
+        // Check if ALL eligible referrals already have a payout linked
+        const { data: unlinkedReferrals } = await supabase
+          .from("referrals")
+          .select("id")
           .eq("doctor_id", doc.doctor_id)
-          .eq("recipient_type", "doctor")
-          .gte("created_at", new Date(now.getFullYear(), now.getMonth(), 1).toISOString())
-          .in("status", ["processing", "paid"])
-          .single();
+          .is("doctor_payout_id", null)
+          .lte("eligible_at", now.toISOString())
+          .neq("status", "cancelled");
 
-        if (existingPayout) {
-          results.skipped.push({ doctor: doc.doctor_name, reason: `Already has a ${existingPayout.status} payout this month` });
-          console.log(`Skipped ${doc.doctor_name} — already has ${existingPayout.status} payout this month`);
+        if (!unlinkedReferrals || unlinkedReferrals.length === 0) {
+          results.skipped.push({ doctor: doc.doctor_name, reason: "All eligible referrals already paid" });
+          console.log(`Skipped ${doc.doctor_name} — all referrals already linked to a payout`);
           continue;
         }
 

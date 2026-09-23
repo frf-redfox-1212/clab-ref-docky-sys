@@ -1,152 +1,269 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KLAB Referral Admin</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 640px;
-            margin: 60px auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-
-        h1 {
-            color: #1a1a1a;
-            font-size: 22px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 8px;
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        h2 {
-            font-size: 15px;
-            margin: 0 0 8px;
-        }
-
-        p.desc {
-            font-size: 13px;
-            color: #666;
-            margin: 0 0 14px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            box-sizing: border-box;
-            margin-bottom: 16px;
-        }
-
-        button {
-            color: white;
-            border: none;
-            padding: 11px 20px;
-            border-radius: 6px;
-            font-size: 14px;
-            cursor: pointer;
-            width: 100%;
-            margin-bottom: 6px;
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-blue {
-            background: #2563eb;
-        }
-
-        .btn-blue:hover:not(:disabled) {
-            background: #1d4ed8;
-        }
-
-        .btn-green {
-            background: #16a34a;
-        }
-
-        .btn-green:hover:not(:disabled) {
-            background: #15803d;
-        }
-
-        .btn-purple {
-            background: #7c3aed;
-        }
-
-        .btn-purple:hover:not(:disabled) {
-            background: #6d28d9;
-        }
-
-        .result {
-            margin-top: 12px;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            white-space: pre-wrap;
-            max-height: 260px;
-            overflow-y: auto;
-            display: none;
-        }
-
-        .success {
-            background: #dcfce7;
-            color: #166534;
-            display: block;
-        }
-
-        .error {
-            background: #fee2e2;
-            color: #991b1b;
-            display: block;
-        }
-
-        .info {
-            background: #dbeafe;
-            color: #1e40af;
-            display: block;
-        }
-
-        .progress {
-            background: #f3f4f6;
-            border-radius: 6px;
-            height: 10px;
-            margin: 10px 0;
-            overflow: hidden;
-            display: none;
-        }
-
-        .progress-bar {
-            height: 100%;
-            transition: width 0.3s;
-        }
-
-        .blue-bar {
-            background: #2563eb;
-        }
-
-        .green-bar {
-            background: #16a34a;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KLAB Referral Admin</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 640px; margin: 60px auto; padding: 20px; background: #f5f5f5; }
+    h1 { color: #1a1a1a; font-size: 22px; }
+    .card { background: white; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    h2 { font-size: 15px; margin: 0 0 8px; }
+    p.desc { font-size: 13px; color: #666; margin: 0 0 14px; }
+    label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 14px; }
+    input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; margin-bottom: 16px; }
+    button { color: white; border: none; padding: 11px 20px; border-radius: 6px; font-size: 14px; cursor: pointer; width: 100%; margin-bottom: 6px; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-blue { background: #2563eb; } .btn-blue:hover:not(:disabled) { background: #1d4ed8; }
+    .btn-green { background: #16a34a; } .btn-green:hover:not(:disabled) { background: #15803d; }
+    .btn-purple { background: #7c3aed; } .btn-purple:hover:not(:disabled) { background: #6d28d9; }
+    .result { margin-top: 12px; padding: 12px; border-radius: 6px; font-size: 13px; white-space: pre-wrap; max-height: 260px; overflow-y: auto; display: none; }
+    .success { background: #dcfce7; color: #166534; display: block; }
+    .error   { background: #fee2e2; color: #991b1b; display: block; }
+    .info    { background: #dbeafe; color: #1e40af; display: block; }
+    .progress { background: #f3f4f6; border-radius: 6px; height: 10px; margin: 10px 0; overflow: hidden; display: none; }
+    .progress-bar { height: 100%; transition: width 0.3s; }
+    .blue-bar { background: #2563eb; }
+    .green-bar { background: #16a34a; }
+  </style>
 </head>
-
 <body>
-    <h1>KLAB Nutra — Referral Admin</h1>
+  <h1>KLAB Nutra — Referral Admin</h1>
+
+  <div class="card">
+    <label>Admin Secret</label>
+    <input id="secret" type="password" placeholder="Enter Admin Secret" />
+  </div>
+
+  <!-- Sync New Codes -->
+  <div class="card">
+    <h2>🔄 Sync New Codes to Shopify</h2>
+    <p class="desc">Only syncs codes with shopify_synced = false. New doctor codes added via import tool.</p>
+    <label>Codes per batch</label>
+    <input id="batchSize" type="number" value="15" />
+    <button class="btn-blue" id="syncBtn" onclick="startSync()">Start Sync</button>
+    <div class="progress" id="syncProgress"><div class="progress-bar blue-bar" id="syncFill" style="width:0%"></div></div>
+    <div class="result" id="syncResult"></div>
+  </div>
+
+  <!-- Verify Sync Status -->
+  <div class="card">
+    <h2>✅ Verify &amp; Update Sync Status</h2>
+    <p class="desc">Checks Shopify for all existing codes and updates shopify_synced in Supabase.</p>
+    <button class="btn-blue" id="verifyBtn" onclick="verifySync()">Verify Sync Status</button>
+    <div class="result" id="verifyResult"></div>
+  </div>
+
+  <!-- Register Beneficiaries -->
+  <div class="card">
+    <h2>🏦 Register Doctor Bank Details with Cashfree</h2>
+    <p class="desc">Registers all doctors who have bank details but aren't yet registered with Cashfree.</p>
+    <button class="btn-blue" id="regBtn" onclick="registerBeneficiaries()">Register All Unregistered Doctors</button>
+    <div class="result" id="regResult"></div>
+  </div>
+
+  <!-- Check Payout Status -->
+  <div class="card">
+    <h2>🔍 Check Processing Payout Status</h2>
+    <p class="desc">Checks all processing payouts with Cashfree and updates status. Runs automatically at 11:30pm IST daily.</p>
+    <button class="btn-purple" id="checkBtn" onclick="checkPayoutStatus()">Check Now</button>
+    <div class="result" id="checkResult"></div>
+  </div>
+
+  <!-- Run Payouts -->
+  <div class="card">
+    <h2>💸 Run Monthly Payouts</h2>
+    <p class="desc">Manually trigger payouts for all eligible doctors. Runs automatically on the 1st of each month.</p>
+    <button class="btn-green" id="payoutBtn" onclick="runPayouts()">Run Payouts Now</button>
+    <div class="result" id="payoutResult"></div>
+  </div>
+
+  <script>
+    let running = false;
+
+    function getSecret() { return document.getElementById('secret').value.trim(); }
+
+    function setResult(id, cls, text) {
+      const el = document.getElementById(id);
+      el.className = 'result ' + cls;
+      el.textContent = text;
+    }
+
+    function setBtn(id, disabled, text) {
+      const btn = document.getElementById(id);
+      btn.disabled = disabled;
+      if (text) btn.textContent = text;
+    }
+
+    async function callApi(path, method, body, secret) {
+      const opts = {
+        method: method || 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+      };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(path, opts);
+      const data = await res.json();
+      return { ok: res.ok, data };
+    }
+
+    // ── Sync ────────────────────────────────────────────────────────────────
+    async function startSync() {
+      if (running) return;
+      const secret = getSecret();
+      if (!secret) { setResult('syncResult', 'error', 'Enter Admin Secret'); return; }
+      const batchSize = parseInt(document.getElementById('batchSize').value) || 15;
+
+      running = true;
+      setBtn('syncBtn', true, '⏳ Syncing...');
+      document.getElementById('syncProgress').style.display = 'block';
+      setResult('syncResult', 'info', 'Starting sync...');
+
+      let totalSynced = 0, totalFailed = 0, initialRemaining = null;
+
+      while (true) {
+        try {
+          const { ok, data } = await callApi('/api/sync-discount-codes', 'POST', { limit: batchSize }, secret);
+          if (!ok) { setResult('syncResult', 'error', '✗ Error:\n' + JSON.stringify(data, null, 2)); break; }
+
+          totalSynced += data.synced || 0;
+          totalFailed += data.failed || 0;
+          if (initialRemaining === null) initialRemaining = (data.remaining || 0) + (data.synced || 0);
+
+          const pct = initialRemaining > 0 ? Math.min(Math.round((totalSynced / initialRemaining) * 100), 100) : 100;
+          document.getElementById('syncFill').style.width = pct + '%';
+          setResult('syncResult', 'info', '⏳ Syncing...\nSynced: ' + totalSynced + ' | Failed: ' + totalFailed);
+
+          if (data.done) {
+            setResult('syncResult', 'success', '✅ All codes synced!\nSynced: ' + totalSynced + '\nFailed: ' + totalFailed);
+            document.getElementById('syncFill').style.width = '100%';
+            break;
+          }
+          await new Promise(r => setTimeout(r, 500));
+        } catch (err) {
+          setResult('syncResult', 'error', '✗ Error: ' + err.message + '\nSynced so far: ' + totalSynced);
+          break;
+        }
+      }
+      running = false;
+      setBtn('syncBtn', false, 'Start Sync');
+    }
+
+    // ── Verify ──────────────────────────────────────────────────────────────
+    async function verifySync() {
+      if (running) return;
+      const secret = getSecret();
+      if (!secret) { setResult('verifyResult', 'error', 'Enter Admin Secret'); return; }
+
+      running = true;
+      setBtn('verifyBtn', true, '⏳ Verifying...');
+      setResult('verifyResult', 'info', '⏳ Fetching codes from Shopify...\nThis may take a few minutes.');
+
+      let offset = 0, totalSynced = 0, totalUnsynced = 0;
+
+      while (true) {
+        try {
+          const { ok, data } = await callApi('/api/verify-shopify-sync', 'POST', { offset }, secret);
+          if (!ok) { setResult('verifyResult', 'error', '✗ Error:\n' + JSON.stringify(data, null, 2)); break; }
+
+          totalSynced += data.synced_this_batch || 0;
+          totalUnsynced += data.unsynced_this_batch || 0;
+          offset = data.next_offset || 0;
+          setResult('verifyResult', 'info', '⏳ Verifying... processed ' + offset + ' codes\nSynced: ' + totalSynced + ' | Not in Shopify: ' + totalUnsynced);
+
+          if (data.done) {
+            setResult('verifyResult', 'success', '✅ Verification complete!\n\nCodes in Shopify: ' + data.shopify_total + '\nTotal processed: ' + data.total + '\nMarked synced: ' + totalSynced + '\nNot in Shopify: ' + totalUnsynced);
+            break;
+          }
+          await new Promise(r => setTimeout(r, 300));
+        } catch (err) {
+          setResult('verifyResult', 'error', '✗ Error: ' + err.message + '\nProcessed so far: ' + offset);
+          break;
+        }
+      }
+      running = false;
+      setBtn('verifyBtn', false, 'Verify Sync Status');
+    }
+
+    // ── Register Beneficiaries ───────────────────────────────────────────────
+    async function registerBeneficiaries() {
+      if (running) return;
+      const secret = getSecret();
+      if (!secret) { setResult('regResult', 'error', 'Enter Admin Secret'); return; }
+
+      running = true;
+      setBtn('regBtn', true, '⏳ Registering...');
+      setResult('regResult', 'info', '⏳ Registering unregistered doctors with Cashfree...');
+
+      try {
+        const { ok, data } = await callApi('/api/register-all-beneficiaries', 'POST', null, secret);
+        if (!ok) {
+          setResult('regResult', 'error', '✗ Error:\n' + JSON.stringify(data, null, 2));
+        } else {
+          let txt = '✅ Registration complete!\n\nRegistered: ' + data.registered + '\nAlready registered: ' + data.already_registered + '\nFailed: ' + data.failed;
+          if (data.failed_details && data.failed_details.length > 0) {
+            txt += '\n\nFailed:\n' + data.failed_details.map(f => f.doctor + ': ' + f.error).join('\n');
+          }
+          setResult('regResult', 'success', txt);
+        }
+      } catch (err) {
+        setResult('regResult', 'error', '✗ Error: ' + err.message);
+      }
+      running = false;
+      setBtn('regBtn', false, 'Register All Unregistered Doctors');
+    }
+
+    // ── Check Payout Status ──────────────────────────────────────────────────
+    async function checkPayoutStatus() {
+      if (running) return;
+      const secret = getSecret();
+      if (!secret) { setResult('checkResult', 'error', 'Enter Admin Secret'); return; }
+
+      running = true;
+      setBtn('checkBtn', true, '⏳ Checking...');
+      setResult('checkResult', 'info', '⏳ Checking processing payouts with Cashfree...');
+
+      try {
+        const { ok, data } = await callApi('/api/check-payout-status', 'POST', null, secret);
+        if (!ok) {
+          setResult('checkResult', 'error', '✗ Error:\n' + JSON.stringify(data, null, 2));
+        } else {
+          setResult('checkResult', 'success', '✅ Status check complete!\n\n✓ Paid: ' + data.paid + '\n✗ Failed: ' + data.failed + '\n⏳ Still processing: ' + data.still_processing);
+        }
+      } catch (err) {
+        setResult('checkResult', 'error', '✗ Error: ' + err.message);
+      }
+      running = false;
+      setBtn('checkBtn', false, 'Check Now');
+    }
+
+    // ── Run Payouts ──────────────────────────────────────────────────────────
+    async function runPayouts() {
+      if (running) return;
+      const secret = getSecret();
+      if (!secret) { setResult('payoutResult', 'error', 'Enter Admin Secret'); return; }
+      if (!confirm('Are you sure you want to run payouts now? This will initiate real bank transfers.')) return;
+
+      running = true;
+      setBtn('payoutBtn', true, '⏳ Processing...');
+      setResult('payoutResult', 'info', '⏳ Processing payouts...');
+
+      try {
+        const { ok, data } = await callApi('/api/run-monthly-payouts', 'POST', null, secret);
+        if (!ok) {
+          setResult('payoutResult', 'error', '✗ Error:\n' + JSON.stringify(data, null, 2));
+        } else {
+          let txt = '✅ Payout run complete!\n\nSuccessful: ' + (data.success || 0) + '\nFailed: ' + (data.failed || 0) + '\nSkipped (no bank details): ' + (data.skipped || 0);
+          if (data.details && data.details.failed && data.details.failed.length > 0) {
+            txt += '\n\nFailed:\n' + data.details.failed.map(f => f.doctor + ': ' + f.error).join('\n');
+          }
+          setResult('payoutResult', 'success', txt);
+        }
+      } catch (err) {
+        setResult('payoutResult', 'error', '✗ Error: ' + err.message);
+      }
+      running = false;
+      setBtn('payoutBtn', false, 'Run Payouts Now');
+    }
+  </script>
+</body>
+</html>
